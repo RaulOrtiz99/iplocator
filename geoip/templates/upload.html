@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoIP Turbo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-message {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-message.warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        .upload-area:hover {
+            border-color: #6366f1;
+        }
+        .file-input-container input[type="file"] {
+            display: none;
+        }
+        .download-button {
+            display: none;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="bi bi-geo-alt-fill me-2"></i> GeoIP Turbo</h3>
+                        <p class="mb-0">Procesamiento ultra rápido de IPs</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <div class="upload-area mb-4" id="uploadArea">
+                                <i class="bi bi-cloud-arrow-up-fill mb-3" style="font-size: 3rem;"></i>
+                                <h5 id="file-label">Arrastra tu archivo CSV aquí</h5>
+                                <p class="text-muted small">o haz clic para seleccionar</p>
+                                <input type="file" id="csv_file" name="csv_file" required accept=".csv" class="d-none">
+                            </div>
+                            <small class="text-muted d-block text-center mb-4">Formatos soportados: .csv</small>
+                            <button type="submit" class="btn btn-primary w-100 py-3" id="processButton">
+                                <i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo
+                            </button>
+                        </form>
+                        <div id="progressContainer" class="mt-4 d-none">
+                            <div class="d-flex justify-content-between mb-2">
+                                <small class="text-muted">Progreso</small>
+                                <small class="text-primary fw-bold" id="progressPercent">0%</small>
+                            </div>
+                            <div class="progress mb-3">
+                                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                            </div>
+                            <small class="text-muted" id="current-ip">Procesando IP: <span id="current-ip-value">-</span></small>
+                        </div>
+                        <div id="message" class="status-message"></div>
+                        <button id="downloadButton" class="btn btn-success w-100 download-button" onclick="downloadFile()">
+                            <i class="bi bi-download me-2"></i> Descargar Resultados
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('csv_file');
+        const processButton = document.getElementById('processButton');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const messageDiv = document.getElementById('message');
+        const downloadButton = document.getElementById('downloadButton');
+        const currentIpValue = document.getElementById('current-ip-value');
+
+        let downloadUrl = null;
+
+        // Permitir seleccionar archivo haciendo clic en el área de carga
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Actualizar el nombre del archivo seleccionado
+        fileInput.addEventListener('change', function (e) {
+            const fileName = e.target.files[0]?.name || 'Arrastra tu archivo CSV aquí';
+            document.getElementById('file-label').textContent = fileName;
+        });
+
+        // Manejar drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#6366f1';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.style.borderColor = '#ccc';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.borderColor = '#ccc';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'text/csv') {
+                fileInput.files = e.dataTransfer.files;
+                document.getElementById('file-label').textContent = file.name;
+            } else {
+                alert('Por favor, selecciona un archivo CSV válido.');
+            }
+        });
+
+        // Función para descargar el archivo manualmente
+        function downloadFile() {
+            if (downloadUrl) {
+                window.location.href = downloadUrl;
+            }
+        }
+
+        // Función para obtener el estado del procesamiento
+        function fetchProcessingStatus() {
+            fetch('/get_processing_status/', { method: 'GET' })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.completed) {
+                        // Actualizar la barra de progreso y la IP actual
+                        progressBar.style.width = `${data.progress}%`;
+                        progressPercent.textContent = `${data.progress}%`;
+                        currentIpValue.textContent = data.current_ip || '-';
+                        // Continuar solicitando actualizaciones
+                        setTimeout(fetchProcessingStatus, 500);
+                    } else {
+                        // Procesamiento completado
+                        progressBar.style.width = '100%';
+                        progressPercent.textContent = '100%';
+                        currentIpValue.textContent = 'Procesamiento completado';
+
+                        // Habilitar el botón de descarga manual
+                        downloadButton.classList.remove('d-none');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al obtener el estado:', error);
+                });
+        }
+
+        // Manejar el envío del formulario
+        document.getElementById('uploadForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (!fileInput.files.length) {
+                alert('Por favor, selecciona un archivo CSV antes de procesar.');
+                return;
+            }
+
+            // Limpiar mensajes anteriores
+            messageDiv.classList.add('d-none');
+            progressContainer.classList.remove('d-none');
+            progressBar.style.width = '0%';
+            progressPercent.textContent = '0%';
+            currentIpValue.textContent = '-';
+            downloadButton.classList.add('d-none');
+
+            // Deshabilitar el botón de procesamiento
+            processButton.disabled = true;
+            processButton.innerHTML = '<span class="spinner me-2"><i class="bi bi-arrow-repeat"></i></span> Procesando...';
+
+            // Crear FormData para enviar el archivo
+            const formData = new FormData();
+            formData.append('csv_file', fileInput.files[0]);
+
+            // Enviar la solicitud al backend
+            fetch('/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok && response.headers.get('content-type').includes('text/csv')) {
+                    return response.blob().then(blob => {
+                        downloadUrl = URL.createObjectURL(blob);
+
+                        // Mostrar mensaje de éxito
+                        messageDiv.textContent = '¡Archivo procesado con éxito!';
+                        messageDiv.className = 'status-message success show';
+                        messageDiv.classList.remove('d-none');
+
+                        // Mostrar el botón de descarga manual
+                        downloadButton.classList.remove('d-none');
+
+                        // Descargar automáticamente el archivo
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = 'processed_results.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    });
+                } else {
+                    return response.json().then(data => {
+                        if (data.error) {
+                            messageDiv.textContent = data.error;
+                            messageDiv.className = 'status-message error show';
+                        } else if (data.errors) {
+                            messageDiv.innerHTML = `<strong>Advertencias:</strong><br>${data.errors}`;
+                            messageDiv.className = 'status-message warning show';
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                messageDiv.textContent = 'Error de conexión con el servidor.';
+                messageDiv.className = 'status-message error show';
+            })
+            .finally(() => {
+                // Habilitar el botón de procesamiento
+                processButton.disabled = false;
+                processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
+            });
+
+            // Iniciar la obtención del estado del procesamiento
+            fetchProcessingStatus();
+        });
+    </script>
+</body>
+</html>
