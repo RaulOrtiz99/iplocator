@@ -1255,6 +1255,7 @@
         let processedIPs = 0;
         let totalIPs = 0;
         let speedSamples = [];
+        let simulationTimeout = null;
         const MAX_SAMPLES = 5;
 
         // Efecto ripple para botones
@@ -1381,12 +1382,68 @@
             return `${mins}m ${secs}s`;
         }
 
-        // Función para calcular la velocidad de procesamiento
-        function calculateSpeed(newProcessed, newTime) {
-            if (!startTime) return 0;
+        // Función para detener la simulación
+        function stopSimulation() {
+            if (simulationTimeout) {
+                clearTimeout(simulationTimeout);
+                simulationTimeout = null;
+            }
             
-            const timeElapsed = (newTime - startTime) / 1000; // en segundos
-            return timeElapsed > 0 ? Math.round(newProcessed / timeElapsed) : 0;
+            // Asegurarse de que todo quede en 100%
+            progressBar.style.width = '100%';
+            progressPercent.textContent = '100%';
+            currentIpValue.textContent = 'Completado';
+            processedCount.textContent = totalIPs.toLocaleString();
+            remainingCount.textContent = '0';
+            speedCount.textContent = '0';
+            timeRemaining.textContent = '0s';
+        }
+
+        // Función para simular el progreso
+        function simulateProgress() {
+            if (processedIPs >= totalIPs) {
+                stopSimulation();
+                
+                // Mostrar el botón de descarga
+                downloadButton.style.display = 'block';
+                showMessage('¡Archivo procesado con éxito! Los resultados están listos para descargar.', 'success');
+                
+                // Habilitar el botón de procesamiento
+                processButton.disabled = false;
+                processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
+                return;
+            }
+
+            // Calcular velocidad de procesamiento (aleatoria entre 50 y 150 IPs/seg)
+            const speed = Math.floor(Math.random() * 100) + 50;
+            speedSamples.push(speed);
+            if (speedSamples.length > MAX_SAMPLES) speedSamples.shift();
+            const avgSpeed = Math.round(speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length);
+
+            // Actualizar contadores
+            processedIPs = Math.min(processedIPs + speed, totalIPs);
+            const remainingIPs = totalIPs - processedIPs;
+            const progress = Math.round((processedIPs / totalIPs) * 100);
+
+            // Calcular tiempo restante
+            const estimatedTime = avgSpeed > 0 ? remainingIPs / avgSpeed : 0;
+
+            // Actualizar la interfaz
+            progressBar.style.width = `${progress}%`;
+            progressPercent.textContent = `${progress}%`;
+            currentIpValue.textContent = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
+            processedCount.textContent = processedIPs.toLocaleString();
+            remainingCount.textContent = remainingIPs.toLocaleString();
+            speedCount.textContent = avgSpeed.toLocaleString();
+            timeRemaining.textContent = formatTime(estimatedTime);
+
+            // Animación para IP actual
+            currentIpValue.classList.add('pulse');
+            setTimeout(() => currentIpValue.classList.remove('pulse'), 1000);
+
+            // Continuar la simulación
+            const delay = Math.random() * 500 + 500; // Entre 500 y 1000 ms
+            simulationTimeout = setTimeout(simulateProgress, delay);
         }
 
         // Manejar el envío del formulario
@@ -1409,6 +1466,9 @@
             processedIPs = 0;
             speedSamples = [];
             
+            // Detener cualquier simulación previa
+            stopSimulation();
+
             // Estimación del número total de IPs (1 IP ≈ 15 bytes en CSV)
             totalIPs = Math.floor(fileInput.files[0].size / 15);
             remainingCount.textContent = totalIPs;
@@ -1419,58 +1479,6 @@
             // Deshabilitar el botón de procesamiento
             processButton.disabled = true;
             processButton.innerHTML = '<span class="spinner me-2"><i class="bi bi-arrow-repeat"></i></span> Procesando...';
-
-            // Función para simular el progreso
-            function simulateProgress() {
-                if (processedIPs >= totalIPs) {
-                    // Proceso completado
-                    progressBar.style.width = '100%';
-                    progressPercent.textContent = '100%';
-                    currentIpValue.textContent = 'Completado';
-                    processedCount.textContent = totalIPs.toLocaleString();
-                    remainingCount.textContent = '0';
-                    
-                    // Mostrar el botón de descarga
-                    downloadButton.style.display = 'block';
-                    showMessage('¡Archivo procesado con éxito! Los resultados están listos para descargar.', 'success');
-                    
-                    // Habilitar el botón de procesamiento
-                    processButton.disabled = false;
-                    processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
-                    return;
-                }
-
-                // Calcular velocidad de procesamiento (aleatoria entre 50 y 150 IPs/seg)
-                const speed = Math.floor(Math.random() * 100) + 50;
-                speedSamples.push(speed);
-                if (speedSamples.length > MAX_SAMPLES) speedSamples.shift();
-                const avgSpeed = Math.round(speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length);
-
-                // Actualizar contadores
-                processedIPs = Math.min(processedIPs + speed, totalIPs);
-                const remainingIPs = totalIPs - processedIPs;
-                const progress = Math.round((processedIPs / totalIPs) * 100);
-
-                // Calcular tiempo restante
-                const estimatedTime = avgSpeed > 0 ? remainingIPs / avgSpeed : 0;
-
-                // Actualizar la interfaz
-                progressBar.style.width = `${progress}%`;
-                progressPercent.textContent = `${progress}%`;
-                currentIpValue.textContent = `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`;
-                processedCount.textContent = processedIPs.toLocaleString();
-                remainingCount.textContent = remainingIPs.toLocaleString();
-                speedCount.textContent = avgSpeed.toLocaleString();
-                timeRemaining.textContent = formatTime(estimatedTime);
-
-                // Animación para IP actual
-                currentIpValue.classList.add('pulse');
-                setTimeout(() => currentIpValue.classList.remove('pulse'), 1000);
-
-                // Continuar la simulación
-                const delay = Math.random() * 500 + 500; // Entre 500 y 1000 ms
-                setTimeout(simulateProgress, delay);
-            }
 
             // Iniciar la simulación de progreso
             simulateProgress();
@@ -1489,6 +1497,13 @@
                     const blob = await response.blob();
                     downloadUrl = URL.createObjectURL(blob);
                     
+                    // Detener la simulación cuando el archivo esté listo
+                    stopSimulation();
+                    
+                    // Mostrar el botón de descarga
+                    downloadButton.style.display = 'block';
+                    showMessage('¡Archivo procesado con éxito! Los resultados están listos para descargar.', 'success');
+                    
                     // Descargar automáticamente el archivo después de un breve retraso
                     setTimeout(() => {
                         const a = document.createElement('a');
@@ -1505,10 +1520,18 @@
                     } else if (data.errors) {
                         showMessage(`Advertencias: ${data.errors}`, 'warning');
                     }
+                    
+                    // Habilitar el botón de procesamiento en caso de error
+                    processButton.disabled = false;
+                    processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 showMessage('Error de conexión con el servidor. Por favor, intenta nuevamente.', 'error');
+                
+                // Habilitar el botón de procesamiento en caso de error
+                processButton.disabled = false;
+                processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
             }
         });
     </script>
