@@ -4,63 +4,212 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoIP Turbo</title>
-    <!-- Bootstrap CSS -->
+    <!-- Bootstrap CSS + Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #6366f1;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --danger-color: #ef4444;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            padding: 1.5rem;
+        }
+        
         .status-message {
             margin-top: 20px;
-            padding: 10px;
-            border-radius: 5px;
+            padding: 15px;
+            border-radius: 8px;
             display: none;
+            animation: fadeIn 0.5s ease;
+            border-left: 4px solid;
         }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
         .status-message.success {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #ecfdf5;
+            color: #065f46;
+            border-left-color: var(--success-color);
         }
+        
         .status-message.warning {
-            background-color: #fff3cd;
-            color: #856404;
+            background-color: #fffbeb;
+            color: #92400e;
+            border-left-color: var(--warning-color);
         }
+        
         .status-message.error {
-            background-color: #f8d7da;
-            color: #721c24;
+            background-color: #fef2f2;
+            color: #b91c1c;
+            border-left-color: var(--danger-color);
         }
+        
         .upload-area {
-            border: 2px dashed #ccc;
-            border-radius: 10px;
-            padding: 20px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 2.5rem 1.5rem;
             text-align: center;
             cursor: pointer;
-            transition: border-color 0.3s ease;
+            transition: all 0.3s ease;
+            background-color: #ffffff;
+            position: relative;
+            overflow: hidden;
         }
+        
         .upload-area:hover {
-            border-color: #6366f1;
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
         }
+        
+        .upload-area.active {
+            border-color: var(--primary-color);
+            background-color: #f5f3ff;
+        }
+        
+        .upload-area i {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover i {
+            transform: scale(1.1);
+        }
+        
         .file-input-container input[type="file"] {
             display: none;
         }
+        
         .download-button {
             display: none;
             margin-top: 15px;
+            transition: all 0.3s ease;
         }
+        
+        .download-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
         .progress-container {
-            margin-top: 20px;
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            margin-top: 1.5rem;
+            animation: fadeIn 0.5s ease;
         }
+        
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+            background-color: #e2e8f0;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+        
         .progress-bar {
+            background: linear-gradient(90deg, var(--primary-color), #8b5cf6);
             transition: width 0.5s ease;
         }
-        .spinner {
+        
+        .ip-display {
+            font-family: 'Fira Code', monospace, sans-serif;
+            background-color: #f1f5f9;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
             display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 0.25rem solid currentColor;
-            border-right-color: transparent;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            margin-left: 0.5rem;
         }
+        
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat-box {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            flex: 1;
+            min-width: 120px;
+            margin: 0.25rem;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--primary-color);
+        }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+        
+        .spinner {
+            animation: spin 1s linear infinite;
+            display: inline-block;
+        }
+        
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 576px) {
+            .upload-area {
+                padding: 1.5rem 1rem;
+            }
+            
+            .card-header {
+                padding: 1rem;
             }
         }
     </style>
@@ -71,35 +220,62 @@
             <div class="col-md-8 col-lg-6">
                 <div class="card">
                     <div class="card-header">
-                        <h3><i class="bi bi-geo-alt-fill me-2"></i> GeoIP Turbo</h3>
-                        <p class="mb-0">Procesamiento ultra rápido de IPs</p>
+                        <h3 class="mb-0"><i class="bi bi-geo-alt-fill me-2"></i> GeoIP Turbo</h3>
+                        <p class="mb-0 opacity-75">Procesamiento ultra rápido de direcciones IP</p>
                     </div>
                     <div class="card-body p-4">
                         <form id="uploadForm" enctype="multipart/form-data">
                             <div class="upload-area mb-4" id="uploadArea">
-                                <i class="bi bi-cloud-arrow-up-fill mb-3" style="font-size: 3rem;"></i>
+                                <i class="bi bi-cloud-arrow-up mb-3"></i>
                                 <h5 id="file-label">Arrastra tu archivo CSV aquí</h5>
-                                <p class="text-muted small">o haz clic para seleccionar</p>
+                                <p class="text-muted small mb-2">o haz clic para seleccionar</p>
+                                <p class="text-muted small">Formatos soportados: .csv (Max. 10MB)</p>
                                 <input type="file" id="csv_file" name="csv_file" required accept=".csv" class="d-none">
                             </div>
-                            <small class="text-muted d-block text-center mb-4">Formatos soportados: .csv</small>
-                            <button type="submit" class="btn btn-primary w-100 py-3" id="processButton">
+                            
+                            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold" id="processButton">
                                 <i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo
                             </button>
                         </form>
-                        <div id="progressContainer" class="mt-4 d-none progress-container">
-                            <div class="d-flex justify-content-between mb-2">
-                                <small class="text-muted">Progreso</small>
-                                <small class="text-primary fw-bold" id="progressPercent">0%</small>
+                        
+                        <div id="progressContainer" class="progress-container d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Progreso del procesamiento</h6>
+                                <span class="badge bg-primary rounded-pill" id="progressPercent">0%</span>
                             </div>
+                            
                             <div class="progress mb-3">
                                 <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
                             </div>
-                            <small class="text-muted" id="current-ip">Procesando IP: <span id="current-ip-value">-</span></small>
-                            <small class="text-muted d-block mt-2" id="timeRemaining">Tiempo restante: Calculando...</small>
+                            
+                            <div class="d-flex align-items-center mb-3">
+                                <small class="text-muted">IP actual:</small>
+                                <span class="ip-display" id="current-ip-value">-</span>
+                            </div>
+                            
+                            <div class="stats-container">
+                                <div class="stat-box">
+                                    <div class="stat-value" id="processed-count">0</div>
+                                    <div class="stat-label">Procesadas</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value" id="remaining-count">0</div>
+                                    <div class="stat-label">Restantes</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value" id="speed-count">-</div>
+                                    <div class="stat-label">IPs/seg</div>
+                                </div>
+                                <div class="stat-box">
+                                    <div class="stat-value" id="time-remaining">-</div>
+                                    <div class="stat-label">Tiempo restante</div>
+                                </div>
+                            </div>
                         </div>
+                        
                         <div id="message" class="status-message"></div>
-                        <button id="downloadButton" class="btn btn-success w-100 download-button" onclick="downloadFile()">
+                        
+                        <button id="downloadButton" class="btn btn-success w-100 py-3 fw-bold download-button" onclick="downloadFile()">
                             <i class="bi bi-download me-2"></i> Descargar Resultados
                         </button>
                     </div>
@@ -107,6 +283,7 @@
             </div>
         </div>
     </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -119,170 +296,287 @@
         const messageDiv = document.getElementById('message');
         const downloadButton = document.getElementById('downloadButton');
         const currentIpValue = document.getElementById('current-ip-value');
-        const timeRemaining = document.getElementById('timeRemaining');
+        const processedCount = document.getElementById('processed-count');
+        const remainingCount = document.getElementById('remaining-count');
+        const speedCount = document.getElementById('speed-count');
+        const timeRemaining = document.getElementById('time-remaining');
+
         let downloadUrl = null;
         let startTime = null;
+        let lastUpdateTime = null;
+        let processedIPs = 0;
+        let totalIPs = 0;
+        let speedSamples = [];
+        const MAX_SAMPLES = 5;
 
         // Permitir seleccionar archivo haciendo clic en el área de carga
         uploadArea.addEventListener('click', () => fileInput.click());
 
         // Actualizar el nombre del archivo seleccionado
         fileInput.addEventListener('change', function (e) {
-            const fileName = e.target.files[0]?.name || 'Arrastra tu archivo CSV aquí';
-            document.getElementById('file-label').textContent = fileName;
-        });
-
-        // Manejar drag and drop
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#6366f1';
-        });
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.style.borderColor = '#ccc';
-        });
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.style.borderColor = '#ccc';
-            const file = e.dataTransfer.files[0];
-            if (file && file.type === 'text/csv') {
-                fileInput.files = e.dataTransfer.files;
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    showMessage('El archivo es demasiado grande (máximo 10MB)', 'error');
+                    fileInput.value = '';
+                    document.getElementById('file-label').textContent = 'Arrastra tu archivo CSV aquí';
+                    return;
+                }
+                
                 document.getElementById('file-label').textContent = file.name;
-            } else {
-                alert('Por favor, selecciona un archivo CSV válido.');
+                uploadArea.classList.add('active');
+                
+                // Estimación rápida del número de IPs (1 IP ≈ 15 bytes en CSV)
+                totalIPs = Math.floor(file.size / 15);
+                remainingCount.textContent = totalIPs;
             }
         });
+
+        // Manejar drag and drop con mejor feedback visual
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('active');
+            uploadArea.style.borderColor = 'var(--primary-color)';
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('active');
+            uploadArea.style.borderColor = '#cbd5e1';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('active');
+            uploadArea.style.borderColor = '#cbd5e1';
+            
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                        showMessage('El archivo es demasiado grande (máximo 10MB)', 'error');
+                        return;
+                    }
+                    
+                    fileInput.files = e.dataTransfer.files;
+                    document.getElementById('file-label').textContent = file.name;
+                    uploadArea.classList.add('active');
+                    
+                    // Estimación rápida del número de IPs
+                    totalIPs = Math.floor(file.size / 15);
+                    remainingCount.textContent = totalIPs;
+                } else {
+                    showMessage('Por favor, selecciona un archivo CSV válido.', 'error');
+                }
+            }
+        });
+
+        // Función para mostrar mensajes de estado
+        function showMessage(text, type) {
+            messageDiv.textContent = text;
+            messageDiv.className = `status-message ${type} show`;
+            messageDiv.style.display = 'block';
+            
+            // Auto-ocultar mensajes de éxito después de 5 segundos
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
 
         // Función para descargar el archivo manualmente
         function downloadFile() {
             if (downloadUrl) {
-                window.location.href = downloadUrl;
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                a.download = 'geoip_resultados.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // Feedback visual
+                downloadButton.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> Descarga completada';
+                downloadButton.classList.add('disabled');
+                setTimeout(() => {
+                    downloadButton.innerHTML = '<i class="bi bi-download me-2"></i> Descargar Resultados';
+                    downloadButton.classList.remove('disabled');
+                }, 2000);
             }
         }
 
-        // Función para calcular el tiempo restante
-        function calculateTimeRemaining(progress, elapsedTime) {
-            if (progress > 0 && progress < 100) {
-                const estimatedTotalTime = (elapsedTime * 100) / progress;
-                const remainingTime = estimatedTotalTime - elapsedTime;
-                return remainingTime;
-            }
-            return null;
+        // Función para formatear el tiempo
+        function formatTime(seconds) {
+            if (isNaN(seconds) || !isFinite(seconds)) return '-';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}m ${secs}s`;
         }
 
-        // Función para obtener el estado del procesamiento
-        function fetchProcessingStatus() {
-            fetch('/get_processing_status/', { method: 'GET' })
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.completed) {
-                        // Calcular el tiempo transcurrido
-                        const elapsedTime = (new Date().getTime() - startTime) / 1000; // En segundos
+        // Función para calcular la velocidad de procesamiento
+        function calculateSpeed(newProcessed, newTime) {
+            if (!startTime) return 0;
+            
+            const timeElapsed = (newTime - startTime) / 1000; // en segundos
+            return timeElapsed > 0 ? Math.round(newProcessed / timeElapsed) : 0;
+        }
 
-                        // Actualizar la barra de progreso
-                        progressBar.style.width = `${data.progress}%`;
-                        progressPercent.textContent = `${data.progress}%`;
+        // Función para obtener el estado del procesamiento con WebSocket
+        function setupWebSocket() {
+            const ws = new WebSocket(`wss://${window.location.host}/ws/status/`);
+            
+            ws.onopen = () => {
+                console.log('WebSocket conectado');
+            };
+            
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                updateProgress(data);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket desconectado');
+                // Reintentar conexión después de 2 segundos
+                setTimeout(setupWebSocket, 2000);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('Error en WebSocket:', error);
+            };
+            
+            return ws;
+        }
 
-                        // Actualizar la IP actual
-                        currentIpValue.textContent = data.current_ip || '-';
-
-                        // Calcular y mostrar el tiempo restante
-                        const remainingTime = calculateTimeRemaining(data.progress, elapsedTime);
-                        if (remainingTime !== null) {
-                            if (remainingTime > 60) {
-                                const minutes = Math.floor(remainingTime / 60);
-                                const seconds = Math.floor(remainingTime % 60);
-                                timeRemaining.textContent = `Tiempo restante: ${minutes}m ${seconds}s`;
-                            } else {
-                                timeRemaining.textContent = `Tiempo restante: ${Math.ceil(remainingTime)}s`;
-                            }
-                        }
-
-                        // Continuar solicitando actualizaciones
-                        setTimeout(fetchProcessingStatus, 500);
-                    } else {
-                        // Procesamiento completado
-                        progressBar.style.width = '100%';
-                        progressPercent.textContent = '100%';
-                        currentIpValue.textContent = 'Procesamiento completado';
-                        timeRemaining.textContent = '¡Listo!';
-                        downloadButton.classList.remove('d-none');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error al obtener el estado:', error);
-                });
+        // Función para actualizar el progreso
+        function updateProgress(data) {
+            const now = new Date().getTime();
+            
+            if (!startTime) {
+                startTime = now;
+                lastUpdateTime = now;
+                processedIPs = 0;
+            }
+            
+            // Actualizar contadores
+            processedIPs = data.processed || processedIPs;
+            totalIPs = data.total || totalIPs;
+            
+            // Calcular velocidad (promedio móvil)
+            const currentSpeed = calculateSpeed(processedIPs, now);
+            speedSamples.push(currentSpeed);
+            if (speedSamples.length > MAX_SAMPLES) speedSamples.shift();
+            const avgSpeed = Math.round(speedSamples.reduce((a, b) => a + b, 0) / speedSamples.length);
+            
+            // Calcular tiempo restante
+            const remainingIPs = totalIPs - processedIPs;
+            const estimatedTime = avgSpeed > 0 ? remainingIPs / avgSpeed : 0;
+            
+            // Actualizar la interfaz
+            const progress = totalIPs > 0 ? Math.round((processedIPs / totalIPs) * 100) : 0;
+            
+            progressBar.style.width = `${progress}%`;
+            progressPercent.textContent = `${progress}%`;
+            currentIpValue.textContent = data.current_ip || '-';
+            processedCount.textContent = processedIPs.toLocaleString();
+            remainingCount.textContent = remainingIPs.toLocaleString();
+            speedCount.textContent = avgSpeed.toLocaleString();
+            timeRemaining.textContent = formatTime(estimatedTime);
+            
+            // Animación para IP actual
+            if (data.current_ip) {
+                currentIpValue.classList.add('pulse');
+                setTimeout(() => currentIpValue.classList.remove('pulse'), 1000);
+            }
+            
+            lastUpdateTime = now;
         }
 
         // Manejar el envío del formulario
-        document.getElementById('uploadForm').addEventListener('submit', function (event) {
+        document.getElementById('uploadForm').addEventListener('submit', async function (event) {
             event.preventDefault();
+
             if (!fileInput.files.length) {
-                alert('Por favor, selecciona un archivo CSV antes de procesar.');
+                showMessage('Por favor, selecciona un archivo CSV antes de procesar.', 'error');
                 return;
             }
 
-            // Limpiar mensajes anteriores
-            messageDiv.classList.add('d-none');
+            // Resetear estado
+            messageDiv.style.display = 'none';
             progressContainer.classList.remove('d-none');
             progressBar.style.width = '0%';
             progressPercent.textContent = '0%';
             currentIpValue.textContent = '-';
-            timeRemaining.textContent = 'Calculando...';
-            downloadButton.classList.add('d-none');
+            downloadButton.style.display = 'none';
+            startTime = null;
+            processedIPs = 0;
+            speedSamples = [];
 
             // Deshabilitar el botón de procesamiento
             processButton.disabled = true;
-            processButton.innerHTML = '<span class="spinner me-2"></span> Procesando...';
+            processButton.innerHTML = '<span class="spinner me-2"><i class="bi bi-arrow-repeat"></i></span> Procesando...';
 
-            // Registrar el tiempo de inicio
-            startTime = new Date().getTime();
+            // Configurar WebSocket para actualizaciones en tiempo real
+            const ws = setupWebSocket();
 
-            // Crear FormData para enviar el archivo
-            const formData = new FormData();
-            formData.append('csv_file', fileInput.files[0]);
+            try {
+                // Crear FormData para enviar el archivo
+                const formData = new FormData();
+                formData.append('csv_file', fileInput.files[0]);
 
-            // Enviar la solicitud al backend
-            fetch('/', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
+                // Enviar la solicitud al backend
+                const response = await fetch('/', {
+                    method: 'POST',
+                    body: formData
+                });
+
                 if (response.ok && response.headers.get('content-type').includes('text/csv')) {
-                    return response.blob().then(blob => {
-                        downloadUrl = URL.createObjectURL(blob);
+                    const blob = await response.blob();
+                    downloadUrl = URL.createObjectURL(blob);
 
-                        // Mostrar mensaje de éxito
-                        messageDiv.textContent = '¡Archivo procesado con éxito!';
-                        messageDiv.className = 'status-message success show';
-                        messageDiv.classList.remove('d-none');
+                    // Mostrar mensaje de éxito
+                    showMessage('¡Archivo procesado con éxito! Los resultados están listos para descargar.', 'success');
 
-                        // Mostrar el botón de descarga manual
-                        downloadButton.classList.remove('d-none');
-                    });
+                    // Mostrar el botón de descarga manual
+                    downloadButton.style.display = 'block';
+
+                    // Descargar automáticamente el archivo después de un breve retraso
+                    setTimeout(() => {
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = 'geoip_resultados.csv';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    }, 500);
                 } else {
-                    return response.json().then(data => {
-                        if (data.error) {
-                            messageDiv.textContent = data.error;
-                            messageDiv.className = 'status-message error show';
-                        } else if (data.errors) {
-                            messageDiv.innerHTML = `<strong>Advertencias:</strong><br>${data.errors}`;
-                            messageDiv.className = 'status-message warning show';
-                        }
-                    });
+                    const data = await response.json();
+                    if (data.error) {
+                        showMessage(data.error, 'error');
+                    } else if (data.errors) {
+                        showMessage(`Advertencias: ${data.errors}`, 'warning');
+                    }
                 }
-            })
-            .catch(error => {
-                messageDiv.textContent = 'Error de conexión con el servidor.';
-                messageDiv.className = 'status-message error show';
-            })
-            .finally(() => {
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error de conexión con el servidor. Por favor, intenta nuevamente.', 'error');
+            } finally {
                 // Habilitar el botón de procesamiento
                 processButton.disabled = false;
                 processButton.innerHTML = '<i class="bi bi-lightning-charge-fill me-2"></i> Procesar Archivo';
-            });
+                
+                // Cerrar WebSocket
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+            }
+        });
 
-            // Iniciar la obtención del estado del procesamiento
-            fetchProcessingStatus();
+        // Efecto de carga inicial
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                document.querySelector('.card').style.opacity = '1';
+                document.querySelector('.card').style.transform = 'translateY(0)';
+            }, 100);
         });
     </script>
 </body>
