@@ -96,7 +96,6 @@ def upload_csv(request):
             for ip in ips:
                 processed_ips += 1
                 try:
-                    print(f"Consultando API para la IP {ip}... ({processed_ips}/{total_ips})")
                     url = f'https://ipinfo.io/{ip}?token={API_KEY}'
                     response = requests.get(url)
                     data = response.json()
@@ -113,7 +112,6 @@ def upload_csv(request):
                     county_frequency[county] += 1  # Incrementar la frecuencia del condado
 
                     results.append([ip, city, region, county, zip_code, lat, long])
-                    print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {county}, {zip_code}, {lat}, {long}")
                 except Exception as e:
                     print(f"Error al procesar la IP {ip}: {e}")
                     results.append([ip, '', '', '', '', '', ''])
@@ -135,16 +133,22 @@ def upload_csv(request):
             writer.writerow(['Número de IP', 'Ciudad', 'Estado', 'Condado', 'Código Postal', 'Latitud', 'Longitud'])
             writer.writerows(results)
 
-            print("Proceso completado. El archivo 'processed_results.csv' ha sido creado.")
+            # Agregar una línea en blanco
+            writer.writerow([])
 
-            # Incluir un resumen de errores y frecuencia de condados en la respuesta JSON
+            # Agregar el análisis de frecuencia al archivo CSV
+            writer.writerow(['Análisis de Frecuencia por Condado'])
+            writer.writerow(['Condado', 'Frecuencia'])
+            for county, count in sorted(county_frequency.items(), key=lambda x: x[1], reverse=True):
+                writer.writerow([county, count])
+
+            # Incluir un resumen de errores en la respuesta JSON
             summary = {
                 'message': 'Archivo procesado con éxito.',
                 'county_frequency': dict(county_frequency),  # Convertir defaultdict a dict
             }
             if invalid_rows:
                 error_summary = "Se encontraron errores en las siguientes filas:\n" + "\n".join(invalid_rows)
-                print(error_summary)
                 summary['errors'] = error_summary
 
             # Devolver el archivo CSV directamente para la autodescarga
