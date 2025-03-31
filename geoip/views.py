@@ -147,7 +147,8 @@ def upload_csv(request):
                 print(error_summary)
                 summary['errors'] = error_summary
 
-            return JsonResponse(summary, status=200)
+            # Devolver el archivo CSV directamente para la autodescarga
+            return response
         except Exception as e:
             print(f"Error general: {str(e)}")
             return JsonResponse({'error': str(e)}, status=400)
