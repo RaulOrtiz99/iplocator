@@ -96,6 +96,7 @@ def upload_csv(request):
             for ip in ips:
                 processed_ips += 1
                 try:
+                    print(f"Consultando API para la IP {ip}... ({processed_ips}/{total_ips})")
                     url = f'https://ipinfo.io/{ip}?token={API_KEY}'
                     response = requests.get(url)
                     data = response.json()
@@ -112,6 +113,7 @@ def upload_csv(request):
                     county_frequency[county] += 1  # Incrementar la frecuencia del condado
 
                     results.append([ip, city, region, county, zip_code, lat, long])
+                    print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {county}, {zip_code}, {lat}, {long}")
                 except Exception as e:
                     print(f"Error al procesar la IP {ip}: {e}")
                     results.append([ip, '', '', '', '', '', ''])
