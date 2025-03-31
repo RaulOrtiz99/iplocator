@@ -1,5 +1,6 @@
 import csv
 import requests
+from collections import defaultdict
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
@@ -89,6 +90,7 @@ def upload_csv(request):
 
             # Consultar la API de IPInfo para obtener datos geográficos
             results = []
+            county_frequency = defaultdict(int)  # Diccionario para contar frecuencia de condados
             processed_ips = 0
 
             for ip in ips:
@@ -106,11 +108,15 @@ def upload_csv(request):
                     lat = loc[0] if len(loc) > 0 else ''
                     long = loc[1] if len(loc) > 1 else ''
 
-                    results.append([ip, city, region, zip_code, lat, long])
-                    print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {zip_code}, {lat}, {long}")
+                    # Intentar obtener el condado desde el campo 'county' o inferirlo
+                    county = data.get('county', '') or region  # Usar 'region' como fallback
+                    county_frequency[county] += 1  # Incrementar la frecuencia del condado
+
+                    results.append([ip, city, region, county, zip_code, lat, long])
+                    print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {county}, {zip_code}, {lat}, {long}")
                 except Exception as e:
                     print(f"Error al procesar la IP {ip}: {e}")
-                    results.append([ip, '', '', '', '', ''])
+                    results.append([ip, '', '', '', '', '', ''])
 
                 # Actualizar el estado del procesamiento
                 processing_state["processed_ips"] = processed_ips
@@ -126,21 +132,22 @@ def upload_csv(request):
             writer = csv.writer(response)
 
             # Escribir la cabecera
-            writer.writerow(['Número de IP', 'Ciudad', 'Estado', 'Código Postal', 'Latitud', 'Longitud'])
+            writer.writerow(['Número de IP', 'Ciudad', 'Estado', 'Condado', 'Código Postal', 'Latitud', 'Longitud'])
             writer.writerows(results)
 
             print("Proceso completado. El archivo 'processed_results.csv' ha sido creado.")
 
-            # Incluir un resumen de errores en la respuesta JSON
+            # Incluir un resumen de errores y frecuencia de condados en la respuesta JSON
+            summary = {
+                'message': 'Archivo procesado con éxito.',
+                'county_frequency': dict(county_frequency),  # Convertir defaultdict a dict
+            }
             if invalid_rows:
                 error_summary = "Se encontraron errores en las siguientes filas:\n" + "\n".join(invalid_rows)
                 print(error_summary)
-                return JsonResponse({
-                    'message': 'Archivo procesado con éxito.',
-                    'errors': error_summary,
-                }, status=200)
-            else:
-                return response
+                summary['errors'] = error_summary
+
+            return JsonResponse(summary, status=200)
         except Exception as e:
             print(f"Error general: {str(e)}")
             return JsonResponse({'error': str(e)}, status=400)
