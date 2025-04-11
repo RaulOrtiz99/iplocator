@@ -329,3 +329,7 @@ def upload_csv(request):
 
     # Si no es una solicitud POST, renderiza la página principal
     return render(request, 'upload.html')
+
+##comentarios de prueba para ver si funca 
+
+print("prueba de concepto")
