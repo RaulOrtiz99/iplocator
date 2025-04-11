@@ -1,179 +1,25 @@
-# import csv
-# import requests
-# from collections import defaultdict
-# from django.http import HttpResponse, JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from django.shortcuts import render
-
-# # Tu clave de API de IPInfo
-# API_KEY = '3b5c89838fc09c'
-
-# # Variable global para almacenar el estado del procesamiento
-# processing_state = {
-#     "total_ips": 0,
-#     "processed_ips": 0,
-#     "current_ip": "",
-#     "progress": 0,
-#     "completed": False,
-# }
-
-# # Función para validar si una cadena es una dirección IP válida
-# def is_valid_ip(ip):
-#     parts = ip.split('.')
-#     if len(parts) != 4:
-#         return False
-#     for part in parts:
-#         if not part.isdigit() or not 0 <= int(part) <= 255:
-#             return False
-#     return True
-
-# # Vista para obtener el estado del procesamiento
-# @csrf_exempt
-# def get_processing_status(request):
-#     return JsonResponse(processing_state)
-
-# # Vista principal para cargar el archivo CSV
-# @csrf_exempt
-# def upload_csv(request):
-#     if request.method == 'POST':
-#         # Obtener el archivo cargado
-#         uploaded_file = request.FILES.get('csv_file')
-#         if not uploaded_file:
-#             return JsonResponse({'error': 'No se ha subido ningún archivo.'}, status=400)
-
-#         try:
-#             # Leer el archivo CSV cargado
-#             decoded_file = uploaded_file.read().decode('utf-8').splitlines()
-#             reader = csv.reader(decoded_file)
-
-#             # Extraer las IPs válidas (sin duplicados)
-#             ips = set()
-#             invalid_rows = []  # Para almacenar mensajes de error específicos
-#             row_count = 0
-
-#             for row in reader:
-#                 row_count += 1
-#                 try:
-#                     # Verificar que la fila tenga al menos 2 columnas
-#                     if len(row) < 2:
-#                         invalid_rows.append(f"Fila {row_count}: Fila incompleta ignorada ({row}).")
-#                         continue
-
-#                     # Obtener la IP de la segunda columna
-#                     ip = row[1].strip()
-
-#                     # Detectar si la fila es una cabecera
-#                     if ip.lower() in ['ip', 'ip address', 'email']:
-#                         print(f"Fila {row_count}: Cabecera detectada y omitida ({ip}).")
-#                         continue
-
-#                     # Validar la IP
-#                     if not ip or '@' in ip or not is_valid_ip(ip):
-#                         invalid_rows.append(f"Fila {row_count}: IP inválida o correo electrónico ignorado ({ip}).")
-#                         continue
-
-#                     # Agregar la IP válida al conjunto
-#                     ips.add(ip)
-#                 except Exception as e:
-#                     invalid_rows.append(f"Fila {row_count}: Error al procesar fila ({row}): {str(e)}")
-
-#             print(f"IPs válidas encontradas (sin duplicados): {ips}")
-#             total_ips = len(ips)
-#             print(f"Total de IPs válidas para procesar: {total_ips}")
-
-#             # Actualizar el estado inicial del procesamiento
-#             processing_state["total_ips"] = total_ips
-#             processing_state["processed_ips"] = 0
-#             processing_state["current_ip"] = ""
-#             processing_state["progress"] = 0
-#             processing_state["completed"] = False
-
-#             # Consultar la API de IPInfo para obtener datos geográficos
-#             results = []
-#             county_frequency = defaultdict(int)  # Diccionario para contar frecuencia de condados
-#             processed_ips = 0
-
-#             for ip in ips:
-#                 processed_ips += 1
-#                 try:
-#                     print(f"Consultando API para la IP {ip}... ({processed_ips}/{total_ips})")
-#                     url = f'https://ipinfo.io/{ip}?token={API_KEY}'
-#                     response = requests.get(url)
-#                     data = response.json()
-
-#                     city = data.get('city', '')
-#                     region = data.get('region', '')
-#                     zip_code = data.get('postal', '')
-#                     loc = data.get('loc', ',').split(',')
-#                     lat = loc[0] if len(loc) > 0 else ''
-#                     long = loc[1] if len(loc) > 1 else ''
-
-#                     # Intentar obtener el condado desde el campo 'county' o inferirlo
-#                     county = data.get('county', '') or region  # Usar 'region' como fallback
-#                     county_frequency[county] += 1  # Incrementar la frecuencia del condado
-
-#                     results.append([ip, city, region, county, zip_code, lat, long])
-#                     print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {county}, {zip_code}, {lat}, {long}")
-#                 except Exception as e:
-#                     print(f"Error al procesar la IP {ip}: {e}")
-#                     results.append([ip, '', '', '', '', '', ''])
-
-#                 # Actualizar el estado del procesamiento
-#                 processing_state["processed_ips"] = processed_ips
-#                 processing_state["current_ip"] = ip
-#                 processing_state["progress"] = int((processed_ips / total_ips) * 100)
-
-#             # Marcar como completado
-#             processing_state["completed"] = True
-
-#             # Crear un archivo CSV con los resultados
-#             response = HttpResponse(content_type='text/csv')
-#             response['Content-Disposition'] = 'attachment; filename="processed_results.csv"'
-#             writer = csv.writer(response)
-
-#             # Escribir la cabecera
-#             writer.writerow(['Número de IP', 'Ciudad', 'Estado', 'Condado', 'Código Postal', 'Latitud', 'Longitud'])
-#             writer.writerows(results)
-
-#             # Agregar una línea en blanco
-#             writer.writerow([])
-
-#             # Agregar el análisis de frecuencia al archivo CSV
-#             writer.writerow(['Análisis de Frecuencia por Condado'])
-#             writer.writerow(['Condado', 'Frecuencia'])
-#             for county, count in sorted(county_frequency.items(), key=lambda x: x[1], reverse=True):
-#                 writer.writerow([county, count])
-
-#             # Incluir un resumen de errores en la respuesta JSON
-#             summary = {
-#                 'message': 'Archivo procesado con éxito.',
-#                 'county_frequency': dict(county_frequency),  # Convertir defaultdict a dict
-#             }
-#             if invalid_rows:
-#                 error_summary = "Se encontraron errores en las siguientes filas:\n" + "\n".join(invalid_rows)
-#                 summary['errors'] = error_summary
-
-#             # Devolver el archivo CSV directamente para la autodescarga
-#             return response
-#         except Exception as e:
-#             print(f"Error general: {str(e)}")
-#             return JsonResponse({'error': str(e)}, status=400)
-
-#     # Si no es una solicitud POST, renderiza la página principal
-#     return render(request, 'upload.html')
-
+"""
+upload_csv.py  – Vista Django para procesar un CSV de IPs
+- Omite la columna “Condado”.
+- Añade columna “Frecuencia de visita”.
+- Devuelve un CSV con resultados y un resumen de frecuencias.
+"""
 
 import csv
-import requests
+import ipaddress
 from collections import defaultdict
+from pathlib import Path
+from typing import Iterable, Tuple
+
+import requests
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_exempt
 
-# Tu clave de API de IPInfo
-API_KEY = '3b5c89838fc09c'
+API_KEY = "3b5c89838fc09c"
+IPINFO_URL = "https://ipinfo.io/{ip}?token={token}"
 
-# Variable global para almacenar el estado del procesamiento
+# --- Estado global de progreso (lo consumes desde /status) ------------------ #
 processing_state = {
     "total_ips": 0,
     "processed_ips": 0,
@@ -182,154 +28,138 @@ processing_state = {
     "completed": False,
 }
 
-# Función para validar si una cadena es una dirección IP válida
-def is_valid_ip(ip):
-    parts = ip.split('.')
-    if len(parts) != 4:
-        return False
-    for part in parts:
-        if not part.isdigit() or not 0 <= int(part) <= 255:
-            return False
-    return True
 
-# Vista para obtener el estado del procesamiento
+# --------------------------------------------------------------------------- #
+# Utilidades                                                                  #
+# --------------------------------------------------------------------------- #
+def is_valid_ip(ip: str) -> bool:
+    """Valida IPv4 pública (descarta privadas/reservadas)."""
+    try:
+        addr = ipaddress.ip_address(ip)
+        return addr.version == 4 and not (addr.is_private or addr.is_reserved)
+    except ValueError:
+        return False
+
+
+def extract_unique_ips(rows: Iterable[list[str]]) -> Tuple[set[str], list[str]]:
+    """Devuelve (ips_únicas, lista_de_errores) a partir de un iterable de filas."""
+    ips, errors = set(), []
+    for idx, row in enumerate(rows, start=1):
+        if len(row) < 2:
+            errors.append(f"Fila {idx}: incompleta → {row}")
+            continue
+
+        candidate = row[1].strip()
+        # Cabeceras típicas
+        if candidate.lower() in {"ip", "ip address", "email"}:
+            continue
+        if "@" in candidate or not is_valid_ip(candidate):
+            errors.append(f"Fila {idx}: IP inválida/ignorada → {candidate}")
+            continue
+
+        ips.add(candidate)
+    return ips, errors
+
+
+def fetch_geo(ip: str) -> dict:
+    """Consulta ipinfo y devuelve los campos de interés (maneja excepciones)."""
+    try:
+        r = requests.get(IPINFO_URL.format(ip=ip, token=API_KEY), timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except Exception:
+        # Si falla, devolvemos dict vacío; el llamador decide qué hacer.
+        return {}
+
+
+# --------------------------------------------------------------------------- #
+# End‑points                                                                  #
+# --------------------------------------------------------------------------- #
 @csrf_exempt
 def get_processing_status(request):
     return JsonResponse(processing_state)
 
-# Vista principal para cargar el archivo CSV
+
 @csrf_exempt
 def upload_csv(request):
-    if request.method == 'POST':
-        # Obtener el archivo cargado
-        uploaded_file = request.FILES.get('csv_file')
-        if not uploaded_file:
-            return JsonResponse({'error': 'No se ha subido ningún archivo.'}, status=400)
+    if request.method != "POST":
+        return render(request, "upload.html")
 
-        try:
-            # Leer el archivo CSV cargado
-            decoded_file = uploaded_file.read().decode('utf-8').splitlines()
-            reader = csv.reader(decoded_file)
+    file = request.FILES.get("csv_file")
+    if not file:
+        return JsonResponse({"error": "No se subió ningún archivo."}, status=400)
 
-            # Extraer las IPs válidas (sin duplicados)
-            ips = set()
-            invalid_rows = []  # Para almacenar mensajes de error específicos
-            row_count = 0
+    # -------------------- 1. Lectura CSV y filtrado de IPs ------------------ #
+    decoded = file.read().decode("utf‑8").splitlines()
+    ips, row_errors = extract_unique_ips(csv.reader(decoded))
 
-            for row in reader:
-                row_count += 1
-                try:
-                    # Verificar que la fila tenga al menos 2 columnas
-                    if len(row) < 2:
-                        invalid_rows.append(f"Fila {row_count}: Fila incompleta ignorada ({row}).")
-                        continue
+    processing_state.update(
+        total_ips=len(ips),
+        processed_ips=0,
+        current_ip="",
+        progress=0,
+        completed=False,
+    )
 
-                    # Obtener la IP de la segunda columna
-                    ip = row[1].strip()
+    # -------------------- 2. Consulta ipinfo y construcción ----------------- #
+    results: list[list[str]] = []
+    location_freq: defaultdict[str, int] = defaultdict(int)
 
-                    # Detectar si la fila es una cabecera
-                    if ip.lower() in ['ip', 'ip address', 'email']:
-                        print(f"Fila {row_count}: Cabecera detectada y omitida ({ip}).")
-                        continue
+    for n, ip in enumerate(ips, start=1):
+        geo = fetch_geo(ip)
 
-                    # Validar la IP
-                    if not ip or '@' in ip or not is_valid_ip(ip):
-                        invalid_rows.append(f"Fila {row_count}: IP inválida o correo electrónico ignorado ({ip}).")
-                        continue
+        city = geo.get("city", "")
+        region = geo.get("region", "")
+        postal = geo.get("postal", "")
+        lat, lon = ("", "")
+        if loc := geo.get("loc", ""):
+            lat, lon = (loc.split(",") + [""])[:2]
 
-                    # Agregar la IP válida al conjunto
-                    ips.add(ip)
-                except Exception as e:
-                    invalid_rows.append(f"Fila {row_count}: Error al procesar fila ({row}): {str(e)}")
+        location_key = f"{city}, {region}"
+        location_freq[location_key] += 1
+        freq = location_freq[location_key]
 
-            print(f"IPs válidas encontradas (sin duplicados): {ips}")
-            total_ips = len(ips)
-            print(f"Total de IPs válidas para procesar: {total_ips}")
+        results.append([ip, city, region, postal, lat, lon, str(freq)])
 
-            # Actualizar el estado inicial del procesamiento
-            processing_state["total_ips"] = total_ips
-            processing_state["processed_ips"] = 0
-            processing_state["current_ip"] = ""
-            processing_state["progress"] = 0
-            processing_state["completed"] = False
+        # Progreso en caliente
+        processing_state.update(
+            processed_ips=n,
+            current_ip=ip,
+            progress=int(n / len(ips) * 100),
+        )
 
-            # Consultar la API de IPInfo para obtener datos geográficos
-            results = []
-            location_frequency = defaultdict(int)  # Diccionario para contar frecuencia de lugares
-            processed_ips = 0
+    processing_state["completed"] = True
 
-            for ip in ips:
-                processed_ips += 1
-                try:
-                    print(f"Consultando API para la IP {ip}... ({processed_ips}/{total_ips})")
-                    url = f'https://ipinfo.io/{ip}?token={API_KEY}'
-                    response = requests.get(url)
-                    data = response.json()
+    # -------------------- 3. Respuesta CSV (stream) ------------------------- #
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = "attachment; filename=processed_results.csv"
+    writer = csv.writer(response)
 
-                    city = data.get('city', '')
-                    region = data.get('region', '')
-                    zip_code = data.get('postal', '')
-                    loc = data.get('loc', ',').split(',')
-                    lat = loc[0] if len(loc) > 0 else ''
-                    long = loc[1] if len(loc) > 1 else ''
+    # Cabecera SIN “Condado” + frecuencia
+    writer.writerow(
+        [
+            "IP",
+            "Ciudad",
+            "Estado/Región",
+            "Código Postal",
+            "Latitud",
+            "Longitud",
+            "Frecuencia de Visita",
+        ]
+    )
+    writer.writerows(results)
 
-                    # Usar la combinación de ciudad y región como clave para contar la frecuencia
-                    location_key = f"{city}, {region}"
-                    location_frequency[location_key] += 1
+    # Espacio + tabla de frecuencias
+    writer.writerow([])
+    writer.writerow(["Análisis de Frecuencia por Lugar"])
+    writer.writerow(["Lugar (Ciudad, Región)", "Visitas"])
+    for place, count in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
+        writer.writerow([place, count])
 
-                    # Agregar la frecuencia al resultado
-                    frequency = location_frequency[location_key]
+    # -------------------- 4. Errores opcionales ----------------------------- #
+    if row_errors:
+        writer.writerow([])
+        writer.writerow(["Errores de Parsing"])
+        writer.writerows([[err] for err in row_errors])
 
-                    results.append([ip, city, region, zip_code, lat, long, frequency])
-                    print(f"Datos obtenidos para la IP {ip}: {city}, {region}, {zip_code}, {lat}, {long}, Frecuencia: {frequency}")
-                except Exception as e:
-                    print(f"Error al procesar la IP {ip}: {e}")
-                    results.append([ip, '', '', '', '', '', ''])
-
-                # Actualizar el estado del procesamiento
-                processing_state["processed_ips"] = processed_ips
-                processing_state["current_ip"] = ip
-                processing_state["progress"] = int((processed_ips / total_ips) * 100)
-
-            # Marcar como completado
-            processing_state["completed"] = True
-
-            # Crear un archivo CSV con los resultados
-            response = HttpResponse(content_type='text/csv')
-            response['Content-Disposition'] = 'attachment; filename="processed_results.csv"'
-            writer = csv.writer(response)
-
-            # Escribir la cabecera (sin columna "Condado", pero con "Frecuencia de Visita")
-            writer.writerow(['Número de IP', 'Ciudad', 'Estado', 'Código Postal', 'Latitud', 'Longitud', 'Frecuencia de Visita'])
-            writer.writerows(results)
-
-            # Agregar una línea en blanco
-            writer.writerow([])
-
-            # Agregar el análisis de frecuencia al archivo CSV
-            writer.writerow(['Análisis de Frecuencia por Lugar'])
-            writer.writerow(['Lugar', 'Frecuencia'])
-            for location, count in sorted(location_frequency.items(), key=lambda x: x[1], reverse=True):
-                writer.writerow([location, count])
-
-            # Incluir un resumen de errores en la respuesta JSON
-            summary = {
-                'message': 'Archivo procesado con éxito.',
-                'location_frequency': dict(location_frequency),  # Convertir defaultdict a dict
-            }
-            if invalid_rows:
-                error_summary = "Se encontraron errores en las siguientes filas:\n" + "\n".join(invalid_rows)
-                summary['errors'] = error_summary
-
-            # Devolver el archivo CSV directamente para la autodescarga
-            return response
-        except Exception as e:
-            print(f"Error general: {str(e)}")
-            return JsonResponse({'error': str(e)}, status=400)
-
-    # Si no es una solicitud POST, renderiza la página principal
-    return render(request, 'upload.html')
-
-##comentarios de prueba para ver si funca 
-
-print("prueba de concepto")
+    return response
