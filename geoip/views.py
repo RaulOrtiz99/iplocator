@@ -109,11 +109,10 @@ def upload_csv(request):
         # Utilizar combinación ciudad – región para frecuencia de visitas
         location_key = f"{city}, {region}"
         location_freq[location_key] += 1
-        freq = location_freq[location_key]
         
-        results.append([ip, city, region, postal, lat, lon, str(freq)])
-        print(f"Datos para {ip}: {city}, {region}, {postal}, {lat}, {lon}, Frecuencia: {freq}")
-        
+        # Almacenar resultados si es necesario (aunque no se usen ahora en el CSV)
+        results.append([ip, city, region, postal, lat, lon])
+
         # Actualizar el estado global y mostrar en consola
         processing_state.update(
             processed_ips=n,
@@ -142,7 +141,7 @@ def upload_csv(request):
     ])
     writer.writerows(results)
     
-    # Espacio y tabla de frecuencias, ordenado por condado y frecuencia
+    # Espacio y tabla de frecuencias, ordenado por condado y frecuencia total
     writer.writerow([])
     writer.writerow(["Análisis de Frecuencia por Condado"])
     writer.writerow(["Condado", "Frecuencia"])
