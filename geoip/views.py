@@ -1,16 +1,7 @@
-"""
-upload_csv.py  – Vista Django para procesar un CSV de IPs
-- Omite la columna “Condado”.
-- Añade columna “Frecuencia de Visita”.
-- Devuelve un CSV con resultados y un resumen de frecuencias.
-- Imprime en consola el progreso del procesamiento.
-"""
-
 import csv
 import ipaddress
 from collections import defaultdict
 from typing import Iterable, Tuple
-
 import requests
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -151,10 +142,10 @@ def upload_csv(request):
     ])
     writer.writerows(results)
     
-    # Espacio y tabla de frecuencias
+    # Espacio y tabla de frecuencias, ordenado por condado y frecuencia
     writer.writerow([])
-    writer.writerow(["Análisis de Frecuencia por Lugar"])
-    writer.writerow(["Lugar (Ciudad, Región)", "Visitas"])
+    writer.writerow(["Análisis de Frecuencia por Condado"])
+    writer.writerow(["Condado", "Frecuencia"])
     for place, count in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
         writer.writerow([place, count])
     
