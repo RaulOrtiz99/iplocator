@@ -163,3 +163,6 @@ def upload_csv(request):
         writer.writerows([[err] for err in row_errors])
 
     return response
+
+
+print("pruebas finalizadas")
