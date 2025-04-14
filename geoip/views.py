@@ -161,4 +161,6 @@ def upload_csv(request):
         writer.writerow(["Errores de Parsing"])
         writer.writerows([[err] for err in row_errors])
 
-    return response
+    return response  
+
+print("le agregue un ptrintaso")
