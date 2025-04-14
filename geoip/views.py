@@ -20,7 +20,7 @@ processing_state = {
 }
 
 # --------------------------------------------------------------------------- #
-# Utilidades                                                                  #
+# Funciones utilitarias                                                       #
 # --------------------------------------------------------------------------- #
 def is_valid_ip(ip: str) -> bool:
     """Valida IPv4 pública (descarta privadas/reservadas)."""
@@ -51,7 +51,7 @@ def extract_unique_ips(rows: Iterable[list[str]]) -> Tuple[set[str], list[str]]:
     return ips, errors
 
 def fetch_geo(ip: str) -> dict:
-    """Consulta a ipinfo y devuelve los datos de geolocalización para la IP."""
+    """Consulta a ipinfo.io y devuelve los datos de geolocalización para la IP."""
     try:
         r = requests.get(IPINFO_URL.format(ip=ip, token=API_KEY), timeout=5)
         r.raise_for_status()
@@ -65,10 +65,12 @@ def fetch_geo(ip: str) -> dict:
 # --------------------------------------------------------------------------- #
 @csrf_exempt
 def get_processing_status(request):
+    """Devuelve el estado de procesamiento como JSON."""
     return JsonResponse(processing_state)
 
 @csrf_exempt
 def upload_csv(request):
+    """Recibe un archivo CSV, filtra las IPs, obtiene geolocalización y genera un CSV de salida."""
     if request.method != "POST":
         return render(request, "upload.html")
 
@@ -76,7 +78,7 @@ def upload_csv(request):
     if not file:
         return JsonResponse({"error": "No se subió ningún archivo."}, status=400)
 
-    # -------------------- 1. Lectura CSV y filtrado de IPs -------------------- #
+    # -------------------- 1. Leer el CSV y filtrar IPs ---------------------- #
     decoded = file.read().decode("utf-8").splitlines()
     ips, row_errors = extract_unique_ips(csv.reader(decoded))
     
@@ -90,30 +92,31 @@ def upload_csv(request):
         completed=False,
     )
 
-    # -------------------- 2. Consulta a ipinfo y recolección de datos ------------ #
-    results: list[list[str]] = []
-    location_freq: defaultdict[str, int] = defaultdict(int)
-    
+    # -------------------- 2. Consultar ipinfo y construir datos ------------ #
+    results = []  # Para IPs
+    location_freq = defaultdict(int)  # Para conteo de visitas por estado/región
+
+    # Recorrer IPs, pedir datos y acumular frecuencias
     for n, ip in enumerate(ips, start=1):
         print(f"Procesando IP {ip} ({n}/{total})...")
         geo = fetch_geo(ip)
-        
-        # Extraer campos con default a cadena vacía si no existen
+
+        # Extraer campos de geolocalización
         city = geo.get("city", "")
         region = geo.get("region", "")
         postal = geo.get("postal", "")
         lat, lon = ("", "")
         if (loc := geo.get("loc", "")):
             lat, lon = (loc.split(",") + [""])[:2]
-        
-        # Utilizar combinación ciudad – región para frecuencia de visitas
-        location_key = f"{city}, {region}"
-        location_freq[location_key] += 1
-        
-        # Almacenar resultados si es necesario (aunque no se usen ahora en el CSV)
-        results.append([ip, city, region, postal, lat, lon])
 
-        # Actualizar el estado global y mostrar en consola
+        # Usar solo el estado/región (no ciudad) para el conteo como en la imagen
+        if region:  # Solo contamos si hay región/estado
+            location_freq[region] += 1
+
+        # Construir fila de IPs
+        results.append([ip, city, region, postal, lat, lon, ""])
+
+        # Consola: Progreso
         processing_state.update(
             processed_ips=n,
             current_ip=ip,
@@ -124,12 +127,12 @@ def upload_csv(request):
     processing_state["completed"] = True
     print("Procesamiento finalizado.")
 
-    # -------------------- 3. Respuesta CSV (stream) ----------------------------- #
+    # -------------------- 3. Generar CSV de Respuesta ----------------------- #
     response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = "attachment; filename=processed_results.csv"
+    response["Content-Disposition"] = 'attachment; filename="processed_results.csv"'
     writer = csv.writer(response)
-    
-    # Escribir cabecera sin la columna de condado, pero con frecuencia
+
+    # Cabecera
     writer.writerow([
         "IP",
         "Ciudad",
@@ -137,23 +140,25 @@ def upload_csv(request):
         "Código Postal",
         "Latitud",
         "Longitud",
-        "Frecuencia de Visita",
+        "Frecuencia de Visita"
     ])
     writer.writerows(results)
-    
-    # Espacio y tabla de frecuencias, ordenado por condado y frecuencia total
+
+    # Espacio
     writer.writerow([])
+
+    # Sección final EXACTAMENTE como en la imagen
     writer.writerow(["Análisis de Frecuencia por Condado"])
     writer.writerow(["Condado", "Frecuencia"])
-    for place, count in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
-        writer.writerow([place, count])
     
-    # Incluir errores de parsing (opcional)
+    # Ordenar por frecuencia descendente y escribir
+    for condado, freq in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
+        writer.writerow([condado, freq])
+
+    # Si hubo errores de parsing, los agregamos al final
     if row_errors:
         writer.writerow([])
         writer.writerow(["Errores de Parsing"])
         writer.writerows([[err] for err in row_errors])
-    
-    return response
 
-print("Pruebas finalizadas")
+    return response
