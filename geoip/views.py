@@ -148,8 +148,8 @@ def upload_csv(request):
     writer.writerow([])
 
     # Sección final EXACTAMENTE como en la imagen
-    writer.writerow(["Análisis de Frecuencia por Condado"])
-    writer.writerow(["Condado", "Frecuencia"])
+    writer.writerow(["Análisis de Frecuencia por Ciudad"])  # Cambiado de "Condado" a "Ciudad"
+    writer.writerow(["Ciudad", "Frecuencia"])  # Cambiado de "Condado" a "Ciudad"
     
     # Ordenar por frecuencia descendente y escribir
     for condado, freq in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
@@ -163,4 +163,4 @@ def upload_csv(request):
 
     return response  
 
-print("le agregue un ptrintaso")
+print("le agregue un ptrintaso") 
