@@ -94,7 +94,7 @@ def upload_csv(request):
 
     # -------------------- 2. Consultar ipinfo y construir datos ------------ #
     results = []  # Para IPs
-    location_freq = defaultdict(int)  # Para conteo de visitas por estado/región
+    location_freq = defaultdict(int)  # Para conteo de visitas por ciudad
 
     # Recorrer IPs, pedir datos y acumular frecuencias
     for n, ip in enumerate(ips, start=1):
@@ -109,14 +109,14 @@ def upload_csv(request):
         if (loc := geo.get("loc", "")):
             lat, lon = (loc.split(",") + [""])[:2]
 
-        # Usar solo el estado/región (no ciudad) para el conteo como en la imagen
-        if region:  # Solo contamos si hay región/estado
-            location_freq[region] += 1
+        # Usar solo la ciudad para el conteo
+        if city:  # Solo contamos si hay ciudad
+            location_freq[city] += 1
 
-        # Construir fila de IPs
+        # Construir fila de IPs (incluye región en la columna correspondiente)
         results.append([ip, city, region, postal, lat, lon, ""])
 
-        # Consola: Progreso
+        # Actualizar estado
         processing_state.update(
             processed_ips=n,
             current_ip=ip,
@@ -132,7 +132,7 @@ def upload_csv(request):
     response["Content-Disposition"] = 'attachment; filename="processed_results.csv"'
     writer = csv.writer(response)
 
-    # Cabecera
+    # Cabecera principal (mantenemos región en la columna)
     writer.writerow([
         "IP",
         "Ciudad",
@@ -147,13 +147,13 @@ def upload_csv(request):
     # Espacio
     writer.writerow([])
 
-    # Sección final EXACTAMENTE como en la imagen
-    writer.writerow(["Análisis de Frecuencia por Ciudad"])  # Cambiado de "Condado" a "Ciudad"
-    writer.writerow(["Ciudad", "Frecuencia"])  # Cambiado de "Condado" a "Ciudad"
-    
+    # Sección final: Análisis de frecuencia por ciudad
+    writer.writerow(["Análisis de Frecuencia por Ciudad"])
+    writer.writerow(["Ciudad", "Frecuencia"])  # Aseguramos "Ciudad"
+
     # Ordenar por frecuencia descendente y escribir
-    for condado, freq in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
-        writer.writerow([condado, freq])
+    for ciudad, freq in sorted(location_freq.items(), key=lambda x: x[1], reverse=True):
+        writer.writerow([ciudad, freq])
 
     # Si hubo errores de parsing, los agregamos al final
     if row_errors:
@@ -163,4 +163,5 @@ def upload_csv(request):
 
     return response  
 
-print("le agregue un ptrintaso") 
+# Corrección del typo en el print al final
+print("Listo para procesar. ¡Éxito!")
